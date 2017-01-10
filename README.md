@@ -15,4 +15,4 @@ To add to channel:
 2. Create initial save file named ./save with bot's token
   1. {"botToken":"INSERT TOKEN HERE"}
 3. Add bot to server
-  1. https://discordapp.com/oauth2/authorize?client_id=CLIENTID&scope=bot&permissions=268438528
+  1. `https://discordapp.com/oauth2/authorize?client_id=CLIENTID&scope=bot&permissions=268438528`
