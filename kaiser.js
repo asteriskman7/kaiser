@@ -22,7 +22,8 @@ function loadState() {
     data = fs.readFileSync(stateFile, 'utf8');
     jsonState = JSON.parse(data);
     state = {
-      botToken: ''
+      botToken: '',
+      guilds: {}
     };
     
     //allow anything in jsonState to overwrite the contents of state
@@ -50,6 +51,10 @@ bot.on("message", msg => {
   var guildMember;
   if (msg.guild !== null) {
     guildID = msg.guild.id;
+    if (state.guilds[guildID] === undefined) {
+      state.guilds[guildID] = {};
+      state.guilds[guildID].grantableRoles = [];
+    }
     guildMember = msg.guild.member(msg.author.id);
     curName = guildMember.nickname;
     if (curName === null) {
@@ -76,9 +81,14 @@ bot.on("message", msg => {
   var role;
   var guildOnlyCmds = {
     grantRole: true,
-    revokeRole: true
+    revokeRole: true,
+    addGrantable: true,
+    removeGrantable: true,
+    listGrantable: true
   };
   var modOnlyCmds = {
+    addGrantable: true,
+    removeGrantable: true
   };
   if (msg.content.startsWith(prefix)) {
     let cmd = msg.content.substr(1).split(' ');
@@ -91,50 +101,93 @@ bot.on("message", msg => {
       return;
     }
     //at this point the user is in the right place with the right permissions to run the cmd
+    var findIndex;
     switch (cmd[0]) {
       case 'grantRole':
         roleName = cmd[1];
-        role = msg.guild.roles.find('name', roleName);
-        if (role) {
-          guildMember.addRole(role).then((gm) => {
-            msgSrc.sendMessage('Role added');
-          }).catch((e) => {
-            msgSrc.sendMessage('Failed to add role');
-            console.log(e);
-          });
+        if (state.guilds[guildID].grantableRoles.indexOf(roleName) === -1) {
+          msgSrc.sendMessage('Role is not grantable');
         } else {
-          msgSrc.sendMessage('Role does not exist. (check capitalization)');
+          role = msg.guild.roles.find('name', roleName);        
+          if (role) {
+            guildMember.addRole(role).then((gm) => {
+              msgSrc.sendMessage('Role added');
+            }).catch((e) => {
+              msgSrc.sendMessage('Failed to add role');
+              console.log(e);
+            });
+          } else {
+            msgSrc.sendMessage('Role does not exist. (check capitalization)');
+          }
         }
         break;
       case 'revokeRole':
         roleName = cmd[1];
+        if (state.guilds[guildID].grantableRoles.indexOf(roleName) === -1) {
+          msgSrc.sendMessage('Role is not revokable');
+        } else {
+          role = msg.guild.roles.find('name', roleName);
+          if (role) {
+            guildMember.removeRole(role).then((gm) => {
+              msgSrc.sendMessage('Role removed');
+            }).catch((e) => {
+              msgSrc.sendMessage('Failed to remove role');
+              console.log(e);
+            });
+          } else {
+            msgSrc.sendMessage('Role does not exist. (check capitalization)');
+          }
+        }
+        break;
+      case 'addGrantable':
+        roleName = cmd[1];
         role = msg.guild.roles.find('name', roleName);
         if (role) {
-          guildMember.removeRole(role).then((gm) => {
-            msgSrc.sendMessage('Role removed');
-          }).catch((e) => {
-            msgSrc.sendMessage('Failed to remove role');
-            console.log(e);
-          });
+          if (state.guilds[guildID].grantableRoles.indexOf(roleName) === -1) {
+            state.guilds[guildID].grantableRoles.push(roleName);
+          }
+          msgSrc.sendMessage('Role added');
+          console.log('added', roleName, 'and now list is', state.guilds[giuldID].grantableRoles);
         } else {
           msgSrc.sendMessage('Role does not exist. (check capitalization)');
         }
         break;
+      case 'removeGrantable':
+        roleName = cmd[1];
+        role = msg.guild.roles.find('name', roleName);
+        if (role) {
+          findIndex = state.guilds[guildID].grantableRoles.indexOf(roleName);
+          if (findIndex !== -1) {
+            state.guilds[guildID].grantableRoles.splice(findIndex, 1);
+          }
+          msgSrc.sendMessage('Role removed');
+        } else {
+          msgSrc.sendMessage('Role does not exist. (check capitalization)');
+        }
+        break;
+      case 'listGrantable':        
+        state.guilds[guildID].grantableRoles.sort();
+        msgSrc.sendMessage('Grantable roles:\n```\n' + state.guilds[guildID].grantableRoles.join('\n') + '\n```');
+        break;      
       case 'help':
         var modStatusMsg;
         if (authorCanRunModCmds) {
-          modStatusMsg = 'You can run moderator commands.';
+          modStatusMsg = 'You can run moderator commands because you have MANAGE_ROLES permission.';
         } else {
-          modStatusMsg = 'You can NOT run moderator commands.';
+          modStatusMsg = 'You can NOT run moderator commands because you don\'t have MANAGE_ROLES permission.';
         }
         msgSrc.sendMessage(`\`\`\`
 kaiser manages roles.
+
 (${modStatusMsg})
 General commands:
  ${prefix}help - Display this help text
  ${prefix}grantRole <roleName> - add role <roleName> to issuer
  ${prefix}revokeRole <roleName> - remove role <roleName> from issuer
+ ${prefix}listGrantable - list roles that can be granted/revoked
 Moderator commands:
+ ${prefix}addGrantable <roleName> - add role <roleName> to list of grantable/revokable roles
+ ${prefix}removeGrantable <roleName> - remove role <roleName> from list of grantable/revokable roles
 \`\`\`
 Visit https://github.com/asteriskman7/kaiser for more information.
 `);         
