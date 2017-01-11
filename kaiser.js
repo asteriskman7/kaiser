@@ -17,9 +17,17 @@ function loadState() {
   var stateFile = './save';
   console.log('loading state');
   var data;
+  var jsonState;
   try {
     data = fs.readFileSync(stateFile, 'utf8');
-    state = JSON.parse(data);
+    jsonState = JSON.parse(data);
+    state = {
+      botToken: ''
+    };
+    
+    //allow anything in jsonState to overwrite the contents of state
+    Object.assign(state, jsonState);
+    
   } 
   catch (e) {
     console.log('ERROR: Unable to load save file');
@@ -92,6 +100,7 @@ bot.on("message", msg => {
             msgSrc.sendMessage('Role added');
           }).catch((e) => {
             msgSrc.sendMessage('Failed to add role');
+            console.log(e);
           });
         } else {
           msgSrc.sendMessage('Role does not exist. (check capitalization)');
@@ -104,7 +113,8 @@ bot.on("message", msg => {
           guildMember.removeRole(role).then((gm) => {
             msgSrc.sendMessage('Role removed');
           }).catch((e) => {
-            msgSrc.sendMessage('Failed to add role');
+            msgSrc.sendMessage('Failed to remove role');
+            console.log(e);
           });
         } else {
           msgSrc.sendMessage('Role does not exist. (check capitalization)');
@@ -118,7 +128,7 @@ bot.on("message", msg => {
           modStatusMsg = 'You can NOT run moderator commands.';
         }
         msgSrc.sendMessage(`\`\`\`
-kaiser handles roles.
+kaiser manages roles.
 (${modStatusMsg})
 General commands:
  ${prefix}help - Display this help text
