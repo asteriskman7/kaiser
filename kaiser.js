@@ -38,38 +38,96 @@ bot.on("message", msg => {
 
   var guildID;
   var curName;
+  var authorCanRunModCmds;
+  var guildMember;
   if (msg.guild !== null) {
     guildID = msg.guild.id;
-    curName = msg.guild.member(msg.author.id).nickname;
+    guildMember = msg.guild.member(msg.author.id);
+    curName = guildMember.nickname;
     if (curName === null) {
       curName = msg.author.username;
     }
+    authorCanRunModCmds = guildMember.hasPermission('MANAGE_ROLES_OR_PERMISSIONS');
   } else {
     guildID = undefined;
     curName = msg.author.username;
-  }
+    authorCanRunModCmds = false;
+  }  
   
   var msgSrcType;
   var msgSrc;
   if (guildID === undefined) {
     msgSrcType = 'PM';
     msgSrc = msg.author;
-    //msg.author.sendMessage('thanks for the PM ' + curName + '!');
   } else {
     msgSrcType = 'CHANNEL';
     msgSrc = msg.channel;
-    //msg.channel.sendMessage('thanks for the message ' + curName + '!');
   }
   
+  var roleName;
+  var role;
+  var guildOnlyCmds = {
+    grantRole: true,
+    revokeRole: true
+  };
+  var modOnlyCmds = {
+  };
   if (msg.content.startsWith(prefix)) {
     let cmd = msg.content.substr(1).split(' ');
-    switch (cmd[0]) {       
+    if (modOnlyCmds[cmd] && !authorCanRunModCmds) {
+      msgSrc.sendMessage('You are not authorized to run that command.');
+      return;
+    }
+    if (guildOnlyCmds[cmd] && guildID === undefined) {
+      msgSrc.sendMessage('That command does not work via direct message.');
+      return;
+    }
+    //at this point the user is in the right place with the right permissions to run the cmd
+    switch (cmd[0]) {
+      case 'grantRole':
+        roleName = cmd[1];
+        role = msg.guild.roles.find('name', roleName);
+        if (role) {
+          guildMember.addRole(role).then((gm) => {
+            msgSrc.sendMessage('Role added');
+          }).catch((e) => {
+            msgSrc.sendMessage('Failed to add role');
+          });
+        } else {
+          msgSrc.sendMessage('Role does not exist. (check capitalization)');
+        }
+        break;
+      case 'revokeRole':
+        roleName = cmd[1];
+        role = msg.guild.roles.find('name', roleName);
+        if (role) {
+          guildMember.removeRole(role).then((gm) => {
+            msgSrc.sendMessage('Role removed');
+          }).catch((e) => {
+            msgSrc.sendMessage('Failed to add role');
+          });
+        } else {
+          msgSrc.sendMessage('Role does not exist. (check capitalization)');
+        }
+        break;
       case 'help':
+        var modStatusMsg;
+        if (authorCanRunModCmds) {
+          modStatusMsg = 'You can run moderator commands.';
+        } else {
+          modStatusMsg = 'You can NOT run moderator commands.';
+        }
         msgSrc.sendMessage(`\`\`\`
 kaiser handles roles.
-Commands:
- ${prefix}help - Display this help text         
-\`\`\``);         
+(${modStatusMsg})
+General commands:
+ ${prefix}help - Display this help text
+ ${prefix}grantRole <roleName> - add role <roleName> to issuer
+ ${prefix}revokeRole <roleName> - remove role <roleName> from issuer
+Moderator commands:
+\`\`\`
+Visit https://github.com/asteriskman7/kaiser for more information.
+`);         
         break;
       default:
         msgSrc.sendMessage('Unknown command');
