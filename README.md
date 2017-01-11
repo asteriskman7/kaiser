@@ -9,6 +9,17 @@ Kaiser can only manage roles lower than its highest role.
 
 You can see the list of commands and their usage with %help.
 
+```
+General commands:
+ %help - Display this help text
+ %grantRole <roleName> - add role <roleName> to issuer
+ %revokeRole <roleName> - remove role <roleName> from issuer
+ %listGrantable - list roles that can be granted/revoked
+Moderator commands:
+ %addGrantable <roleName> - add role <roleName> to list of grantable/revokable roles
+ %removeGrantable <roleName> - remove role <roleName> from list of grantable/revokable roles
+```
+
 Kaiser is built on [discord.js](https://github.com/hydrabolt/discord.js/).
 
 To add to channel:
