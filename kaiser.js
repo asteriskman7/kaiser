@@ -43,7 +43,6 @@ var lastSave = 0;
 bot.on("message", msg => {
   //ignore all messages from bots
   if (msg.author.bot) {return;}
-  console.log('message: ' + msg.content);  
 
   var guildID;
   var curName;
@@ -91,6 +90,7 @@ bot.on("message", msg => {
     removeGrantable: true
   };
   if (msg.content.startsWith(prefix)) {
+    console.log('message: ' + msg.content);  
     let cmd = msg.content.substr(1).split(' ');
     if (modOnlyCmds[cmd] && !authorCanRunModCmds) {
       msgSrc.sendMessage('You are not authorized to run that command.');
@@ -154,16 +154,16 @@ bot.on("message", msg => {
         break;
       case 'removeGrantable':
         roleName = cmd[1];
-        role = msg.guild.roles.find('name', roleName);
-        if (role) {
+        //role = msg.guild.roles.find('name', roleName);
+        //if (role) {
           findIndex = state.guilds[guildID].grantableRoles.indexOf(roleName);
           if (findIndex !== -1) {
             state.guilds[guildID].grantableRoles.splice(findIndex, 1);
           }
           msgSrc.sendMessage('Role removed');
-        } else {
-          msgSrc.sendMessage('Role does not exist. (check capitalization)');
-        }
+        //} else {
+        //  msgSrc.sendMessage('Role does not exist. (check capitalization)');
+        //}
         break;
       case 'listGrantable':        
         state.guilds[guildID].grantableRoles.sort();
