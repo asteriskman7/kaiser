@@ -147,7 +147,7 @@ bot.on("message", msg => {
             state.guilds[guildID].grantableRoles.push(roleName);
           }
           msgSrc.sendMessage('Role added');
-          console.log('added', roleName, 'and now list is', state.guilds[giuldID].grantableRoles);
+          console.log('added', roleName, 'and now list is', state.guilds[guildID].grantableRoles);
         } else {
           msgSrc.sendMessage('Role does not exist. (check capitalization)');
         }
@@ -214,4 +214,4 @@ if (state.botToken !== undefined && state.botToken.length > 0) {
 }
 
 //add bot to server and give read messages/send messages/manage roles permissions
-//https://discordapp.com/oauth2/authorize?client_id=<CLIENTID>&scope=bot&permissions=268438528
+//https://discordapp.com/oauth2/authorize?client_id=<CLIENTID>&scope=bot
