@@ -92,11 +92,11 @@ bot.on("message", msg => {
   if (msg.content.startsWith(prefix)) {
     console.log('message: ' + msg.content);  
     let cmd = msg.content.substr(1).split(' ');
-    if (modOnlyCmds[cmd] && !authorCanRunModCmds) {
+    if (modOnlyCmds[cmd[0]] && !authorCanRunModCmds) {
       msgSrc.sendMessage('You are not authorized to run that command.');
       return;
     }
-    if (guildOnlyCmds[cmd] && guildID === undefined) {
+    if (guildOnlyCmds[cmd[0]] && guildID === undefined) {
       msgSrc.sendMessage('That command does not work via direct message.');
       return;
     }
