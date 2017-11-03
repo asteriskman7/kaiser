@@ -17,6 +17,8 @@ General commands:
  %listGrantable - list roles that can be granted/revoked
 Moderator commands:
  %addGrantable <roleName> - add role <roleName> to list of grantable/revokable roles
+ %mute <@user> <integer duration in minutes> <reason message for user> - mute and automatically unmute user
+   Sends reason message to user via PM.
  %removeGrantable <roleName> - remove role <roleName> from list of grantable/revokable roles
 ```
 
