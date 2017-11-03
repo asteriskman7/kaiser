@@ -25,11 +25,11 @@ function loadState() {
       botToken: '',
       guilds: {}
     };
-    
+
     //allow anything in jsonState to overwrite the contents of state
     Object.assign(state, jsonState);
-    
-  } 
+
+  }
   catch (e) {
     console.log('ERROR: Unable to load save file');
   }
@@ -39,6 +39,7 @@ function loadState() {
 var prefix = '%';
 var state;
 var lastSave = 0;
+var muteRoleName = 'Muted';
 
 bot.on("message", msg => {
   //ignore all messages from bots
@@ -54,6 +55,10 @@ bot.on("message", msg => {
       state.guilds[guildID] = {};
       state.guilds[guildID].grantableRoles = [];
     }
+    //TODO: design a more elegant way of adding new fields to exsisting saves
+    if (state.guilds[guildID].timeouts === undefined) {
+      state.guilds[guildID].timeouts = [];
+    }
     guildMember = msg.guild.member(msg.author.id);
     curName = guildMember.nickname;
     if (curName === null) {
@@ -64,8 +69,8 @@ bot.on("message", msg => {
     guildID = undefined;
     curName = msg.author.username;
     authorCanRunModCmds = false;
-  }  
-  
+  }
+
   var msgSrcType;
   var msgSrc;
   if (guildID === undefined) {
@@ -75,7 +80,7 @@ bot.on("message", msg => {
     msgSrcType = 'CHANNEL';
     msgSrc = msg.channel;
   }
-  
+
   var roleName;
   var role;
   var guildOnlyCmds = {
@@ -83,14 +88,16 @@ bot.on("message", msg => {
     revokeRole: true,
     addGrantable: true,
     removeGrantable: true,
-    listGrantable: true
+    listGrantable: true,
+    mute: true
   };
   var modOnlyCmds = {
     addGrantable: true,
-    removeGrantable: true
+    removeGrantable: true,
+    mute: true
   };
   if (msg.content.startsWith(prefix)) {
-    console.log('message: ' + msg.content);  
+    console.log('message: ' + msg.content);
     let cmd = msg.content.substr(1).split(' ');
     if (modOnlyCmds[cmd[0]] && !authorCanRunModCmds) {
       msgSrc.sendMessage('You are not authorized to run that command.');
@@ -108,7 +115,7 @@ bot.on("message", msg => {
         if (state.guilds[guildID].grantableRoles.indexOf(roleName) === -1) {
           msgSrc.sendMessage('Role is not grantable');
         } else {
-          role = msg.guild.roles.find('name', roleName);        
+          role = msg.guild.roles.find('name', roleName);
           if (role) {
             guildMember.addRole(role).then((gm) => {
               msgSrc.sendMessage('Role added');
@@ -165,10 +172,48 @@ bot.on("message", msg => {
         //  msgSrc.sendMessage('Role does not exist. (check capitalization)');
         //}
         break;
-      case 'listGrantable':        
+      case 'listGrantable':
         state.guilds[guildID].grantableRoles.sort();
         msgSrc.sendMessage('Grantable roles:\n```\n' + state.guilds[guildID].grantableRoles.join('\n') + '\n```');
-        break;      
+        break;
+      case 'mute':
+        //<@user> <minutes> <reason>
+        let muteDuration = parseInt(cmd[2]);
+        let unmuteTime = Date.now() + muteDuration * 60 * 1000;
+        let muteReason = cmd.slice(3).join(' ');
+        if (!isNaN(muteDuration) && muteReason.length > 0) {
+          if (msg.mentions !== undefined && msg.mentions.users.size === 1) {
+            let mentionedUser = msg.mentions.users.first();
+            let mentionedUserName = getUsernameFromId(msg.guild, mentionedUser.id);
+            let modName = getUsernameFromId(msg.guild, msg.author.id);
+            role = msg.guild.roles.find('name', muteRoleName);
+            if (role) {
+              let muteGuildMember = msg.guild.member(mentionedUser.id);
+              muteGuildMember.addRole(role).then((gm) => {
+                //TODO: handle a user who already has a mute timeout by removing the previous timeout and adding a new one
+                state.guilds[guildID].timeouts.push({
+                  time: unmuteTime,
+                  action: "REVOKE",
+                  role: muteRoleName,
+                  user: mentionedUser.id,
+                  message: `${mentionedUserName}, your mute on ${msg.guild.name} for \`${muteReason}\` has now expired`
+                });
+                msgSrc.sendMessage(`Muting ${mentionedUserName} for ${muteDuration} minutes for \`${muteReason}\``);
+                mentionedUser.sendMessage(`${mentionedUserName}, You have been muted for ${muteDuration} minutes in ${msg.guild.name} by ${modName} because \`${muteReason}\``);
+              }).catch((e) => {
+                msgSrc.sendMessage('Failed to add mute role to user. Already muted?');
+                console.log(e);
+              });
+            } else {
+              msgSrc.sendMessage('Unable to add mute role because it does not exist.');
+            }
+          } else {
+            msgSrc.sendMessage('Error: No mentioned user found in command');
+          }
+        } else {
+          msgSrc.sendMessage('Error: badly formatted command. Check help');
+        }
+        break;
       case 'help':
         var modStatusMsg;
         if (authorCanRunModCmds) {
@@ -187,10 +232,12 @@ General commands:
  ${prefix}listGrantable - list roles that can be granted/revoked
 Moderator commands:
  ${prefix}addGrantable <roleName> - add role <roleName> to list of grantable/revokable roles
+ ${prefix}mute <@user> <integer duration in minutes> <reason message for user> - mute and automatically unmute user
+   Sends reason message to user via PM.
  ${prefix}removeGrantable <roleName> - remove role <roleName> from list of grantable/revokable roles
 \`\`\`
 Visit https://github.com/asteriskman7/kaiser for more information.
-`);         
+`);
         break;
       default:
         msgSrc.sendMessage('Unknown command');
@@ -200,11 +247,60 @@ Visit https://github.com/asteriskman7/kaiser for more information.
   saveState();
 });
 
+function getUsernameFromId(guild, userID) {
+  var user = guild.members.find('id', userID);
+  if (user.nickname !== null) {
+    return user.nickname;
+  } else {
+    return user.user.username;
+  }
+}
+
 bot.on('ready', () => {
   console.log('I am ready!');
+  setInterval(handleTimeouts, 1000);
 });
 
 bot.on('error', e => { console.error(e); });
+
+function handleTimeouts() {
+  Object.keys(state.guilds).forEach(guildID => {
+    let guild = state.guilds[guildID];
+    let guildObj = bot.guilds.find('id', guildID);
+
+    if (guild.timeouts === undefined) {
+      guild.timeouts = [];
+    }
+    guild.timeouts = guild.timeouts.filter(timeout => {
+      /*each timeout is an object like this:
+        {time: <time to invoke the action>,
+         action: <either "GRANT" or "REVOKE">,
+         role: <role name to be granted or revoked>,
+         user: <user id to act on>,
+         message: <optional message to PM to the user when the action occurs>
+        }
+      */
+      if (Date.now() >= timeout.time) {
+        console.log('servicing timeout', JSON.stringify(timeout));
+        let role = guildObj.roles.find('name', timeout.role);
+        if (role) {
+          let guildMember = guildObj.member(timeout.user);
+          guildMember.removeRole(role).then((gm) => {
+            guildMember.sendMessage(timeout.message);
+          }).catch((e) => {
+            console.log('failed to remove role during timeout', JSON.stringify(timeout), e);
+          });
+        } else {
+          console.log('timeout role', timeout.role, 'does not exist');
+        }
+        return false; //return false so the filter will discard this timeout
+      } else {
+        //console.log('skipping timeout', JSON.stringify(timeout));
+        return true; //return true so the filter will retain this timeout
+      }
+    });
+  });
+}
 
 loadState();
 if (state.botToken !== undefined && state.botToken.length > 0) {
