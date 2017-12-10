@@ -263,6 +263,14 @@ bot.on('ready', () => {
 
 bot.on('error', e => { console.error(e); });
 
+bot.on('disconnect', handleDisconnect);
+
+function handleDisconnect() {
+  let disconnectTime = (new Date()).toString();
+  console.log('Received disconnect at', disconnectTime);
+  process.exit(1);
+}
+
 function handleTimeouts() {
   Object.keys(state.guilds).forEach(guildID => {
     let guild = state.guilds[guildID];
