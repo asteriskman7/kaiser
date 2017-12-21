@@ -3,9 +3,9 @@ var Discord = require("discord.js");
 var bot = new Discord.Client();
 var fs = require('fs');
 
-function saveState() {
+function saveState(force) {
   let curTime = new Date();
-  if ((Date.now() - lastSave) > 30000) {
+  if ((Date.now() - lastSave) > 30000 || force === true) {
     let saveString = JSON.stringify(state);
     fs.writeFile('./save', saveString);
     console.log('save complete @ ' + (new Date()));
@@ -268,6 +268,7 @@ bot.on('disconnect', handleDisconnect);
 function handleDisconnect() {
   let disconnectTime = (new Date()).toString();
   console.log('Received disconnect at', disconnectTime);
+  saveState(true);
   process.exit(1);
 }
 
