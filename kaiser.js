@@ -3,11 +3,15 @@ var Discord = require("discord.js");
 var bot = new Discord.Client();
 var fs = require('fs');
 
-function saveState(force) {
+function saveState(force, callback) {
   let curTime = new Date();
   if ((Date.now() - lastSave) > 30000 || force === true) {
     let saveString = JSON.stringify(state);
-    fs.writeFile('./save', saveString);
+    if (callback !== undefined) {
+      fs.writeFile('./save', saveString, callback);
+    } else {
+      fs.writeFile('./save', saveString);
+    }
     console.log('save complete @ ' + (new Date()));
     lastSave = Date.now();
   }
@@ -32,6 +36,7 @@ function loadState() {
   }
   catch (e) {
     console.log('ERROR: Unable to load save file');
+    process.exit(1);
   }
   console.log('done loading');
 }
@@ -268,8 +273,7 @@ bot.on('disconnect', handleDisconnect);
 function handleDisconnect() {
   let disconnectTime = (new Date()).toString();
   console.log('Received disconnect at', disconnectTime);
-  saveState(true);
-  process.exit(1);
+  saveState(true, () => {process.exit(1);});
 }
 
 function handleTimeouts() {
