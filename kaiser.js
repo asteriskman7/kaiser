@@ -10,7 +10,7 @@ function saveState(force, callback) {
     if (callback !== undefined) {
       fs.writeFile('./save', saveString, callback);
     } else {
-      fs.writeFile('./save', saveString);
+      fs.writeFile('./save', saveString, () => {});
     }
     console.log('save complete @ ' + (new Date()));
     lastSave = Date.now();
@@ -216,7 +216,12 @@ bot.on("message", msg => {
             msgSrc.sendMessage('Error: No mentioned user found in command');
           }
         } else {
-          msgSrc.sendMessage('Error: badly formatted command. Check help');
+          if (isNaN(muteDuration)) {
+            msgSrc.sendMessage('Error: duration is unable to be parsed properly');
+            console.log('Duration was \"' + cmd[2] + '\"');
+          } else {
+            msgSrc.sendMessage('Error: mute reason length is 0');
+          }
         }
         break;
       case 'help':
