@@ -64,7 +64,12 @@ bot.on("message", msg => {
     if (state.guilds[guildID].timeouts === undefined) {
       state.guilds[guildID].timeouts = [];
     }
+
+    console.log('guild', msg.guild);
+    console.log('id', msg.author);
+
     guildMember = msg.guild.member(msg.author.id);
+    //guildMember = msg.guild.member(msg.author);
     curName = guildMember.nickname;
     if (curName === null) {
       curName = msg.author.username;
@@ -105,11 +110,11 @@ bot.on("message", msg => {
     console.log('message: ' + msg.content);
     let cmd = msg.content.substr(1).split(' ');
     if (modOnlyCmds[cmd[0]] && !authorCanRunModCmds) {
-      msgSrc.sendMessage('You are not authorized to run that command.');
+      msgSrc.send('You are not authorized to run that command.');
       return;
     }
     if (guildOnlyCmds[cmd[0]] && guildID === undefined) {
-      msgSrc.sendMessage('That command does not work via direct message.');
+      msgSrc.send('That command does not work via direct message.');
       return;
     }
     //at this point the user is in the right place with the right permissions to run the cmd
@@ -118,50 +123,51 @@ bot.on("message", msg => {
       case 'grantRole':
         roleName = cmd[1];
         if (state.guilds[guildID].grantableRoles.indexOf(roleName) === -1) {
-          msgSrc.sendMessage('Role is not grantable');
+          msgSrc.send('Role is not grantable');
         } else {
-          role = msg.guild.roles.find('name', roleName);
+          role = msg.guild.roles.cache.find( r => r.name === roleName );
           if (role) {
-            guildMember.addRole(role).then((gm) => {
-              msgSrc.sendMessage('Role added');
+            //guildMember.addRole(role).then((gm) => {
+            guildMember.roles.add(role).then((gm) => {
+              msgSrc.send('Role added');
             }).catch((e) => {
-              msgSrc.sendMessage('Failed to add role');
+              msgSrc.send('Failed to add role');
               console.log(e);
             });
           } else {
-            msgSrc.sendMessage('Role does not exist. (check capitalization)');
+            msgSrc.send('Role does not exist. (check capitalization)');
           }
         }
         break;
       case 'revokeRole':
         roleName = cmd[1];
         if (state.guilds[guildID].grantableRoles.indexOf(roleName) === -1) {
-          msgSrc.sendMessage('Role is not revokable');
+          msgSrc.send('Role is not revokable');
         } else {
-          role = msg.guild.roles.find('name', roleName);
+          role = msg.guild.roles.cache.find( r => r.name === roleName );
           if (role) {
-            guildMember.removeRole(role).then((gm) => {
-              msgSrc.sendMessage('Role removed');
+            guildMember.roles.remove(role).then((gm) => {
+              msgSrc.send('Role removed');
             }).catch((e) => {
-              msgSrc.sendMessage('Failed to remove role');
+              msgSrc.send('Failed to remove role');
               console.log(e);
             });
           } else {
-            msgSrc.sendMessage('Role does not exist. (check capitalization)');
+            msgSrc.send('Role does not exist. (check capitalization)');
           }
         }
         break;
       case 'addGrantable':
         roleName = cmd[1];
-        role = msg.guild.roles.find('name', roleName);
+        role = msg.guild.roles.cache.find( r => r.name === roleName );
         if (role) {
           if (state.guilds[guildID].grantableRoles.indexOf(roleName) === -1) {
             state.guilds[guildID].grantableRoles.push(roleName);
           }
-          msgSrc.sendMessage('Role added');
+          msgSrc.send('Role added');
           console.log('added', roleName, 'and now list is', state.guilds[guildID].grantableRoles);
         } else {
-          msgSrc.sendMessage('Role does not exist. (check capitalization)');
+          msgSrc.send('Role does not exist. (check capitalization)');
         }
         break;
       case 'removeGrantable':
@@ -172,14 +178,14 @@ bot.on("message", msg => {
           if (findIndex !== -1) {
             state.guilds[guildID].grantableRoles.splice(findIndex, 1);
           }
-          msgSrc.sendMessage('Role removed');
+          msgSrc.send('Role removed');
         //} else {
-        //  msgSrc.sendMessage('Role does not exist. (check capitalization)');
+        //  msgSrc.send('Role does not exist. (check capitalization)');
         //}
         break;
       case 'listGrantable':
         state.guilds[guildID].grantableRoles.sort();
-        msgSrc.sendMessage('Grantable roles:\n```\n' + state.guilds[guildID].grantableRoles.join('\n') + '\n```');
+        msgSrc.send('Grantable roles:\n```\n' + state.guilds[guildID].grantableRoles.join('\n') + '\n```');
         break;
       case 'mute':
         //<@user> <minutes> <reason>
@@ -191,10 +197,10 @@ bot.on("message", msg => {
             let mentionedUser = msg.mentions.users.first();
             let mentionedUserName = getUsernameFromId(msg.guild, mentionedUser.id);
             let modName = getUsernameFromId(msg.guild, msg.author.id);
-            role = msg.guild.roles.find('name', muteRoleName);
+            role = msg.guild.roles.cache.find( r => r.name === muteRoleName );
             if (role) {
               let muteGuildMember = msg.guild.member(mentionedUser.id);
-              muteGuildMember.addRole(role).then((gm) => {
+              muteGuildMember.roles.add(role).then((gm) => {
                 //TODO: handle a user who already has a mute timeout by removing the previous timeout and adding a new one
                 state.guilds[guildID].timeouts.push({
                   time: unmuteTime,
@@ -203,24 +209,24 @@ bot.on("message", msg => {
                   user: mentionedUser.id,
                   message: `${mentionedUserName}, your mute on ${msg.guild.name} for \`${muteReason}\` has now expired`
                 });
-                msgSrc.sendMessage(`Muting ${mentionedUserName} for ${muteDuration} minutes for \`${muteReason}\``);
-                mentionedUser.sendMessage(`${mentionedUserName}, You have been muted for ${muteDuration} minutes in ${msg.guild.name} by ${modName} because \`${muteReason}\``);
+                msgSrc.send(`Muting ${mentionedUserName} for ${muteDuration} minutes for \`${muteReason}\``);
+                mentionedUser.send(`${mentionedUserName}, You have been muted for ${muteDuration} minutes in ${msg.guild.name} by ${modName} because \`${muteReason}\``);
               }).catch((e) => {
-                msgSrc.sendMessage('Failed to add mute role to user. Already muted?');
+                msgSrc.send('Failed to add mute role to user. Already muted?');
                 console.log(e);
               });
             } else {
-              msgSrc.sendMessage('Unable to add mute role because it does not exist.');
+              msgSrc.send('Unable to add mute role because it does not exist.');
             }
           } else {
-            msgSrc.sendMessage('Error: No mentioned user found in command');
+            msgSrc.send('Error: No mentioned user found in command');
           }
         } else {
           if (isNaN(muteDuration)) {
-            msgSrc.sendMessage('Error: duration is unable to be parsed properly');
+            msgSrc.send('Error: duration is unable to be parsed properly');
             console.log('Duration was \"' + cmd[2] + '\"');
           } else {
-            msgSrc.sendMessage('Error: mute reason length is 0');
+            msgSrc.send('Error: mute reason length is 0');
           }
         }
         break;
@@ -231,7 +237,7 @@ bot.on("message", msg => {
         } else {
           modStatusMsg = 'You can NOT run moderator commands because you don\'t have MANAGE_ROLES permission.';
         }
-        msgSrc.sendMessage(`\`\`\`
+        msgSrc.send(`\`\`\`
 kaiser manages roles.
 
 (${modStatusMsg})
@@ -250,7 +256,7 @@ Visit https://github.com/asteriskman7/kaiser for more information.
 `);
         break;
       default:
-        msgSrc.sendMessage('Unknown command');
+        msgSrc.send('Unknown command');
     }
   }
 
@@ -258,7 +264,8 @@ Visit https://github.com/asteriskman7/kaiser for more information.
 });
 
 function getUsernameFromId(guild, userID) {
-  var user = guild.members.find('id', userID);
+  //var user = guild.members.find('id', userID);
+  var user = guild.members.fetch(userID);
   if (user.nickname !== null) {
     return user.nickname;
   } else {
@@ -284,7 +291,7 @@ function handleDisconnect() {
 function handleTimeouts() {
   Object.keys(state.guilds).forEach(guildID => {
     let guild = state.guilds[guildID];
-    let guildObj = bot.guilds.find('id', guildID);
+    //let guildObj = bot.guilds.fetch(guildID);
 
     if (guild.timeouts === undefined) {
       guild.timeouts = [];
@@ -300,17 +307,19 @@ function handleTimeouts() {
       */
       if (Date.now() >= timeout.time) {
         console.log('servicing timeout', JSON.stringify(timeout));
-        let role = guildObj.roles.find('name', timeout.role);
-        if (role) {
-          let guildMember = guildObj.member(timeout.user);
-          guildMember.removeRole(role).then((gm) => {
-            guildMember.sendMessage(timeout.message);
-          }).catch((e) => {
-            console.log('failed to remove role during timeout', JSON.stringify(timeout), e);
-          });
-        } else {
-          console.log('timeout role', timeout.role, 'does not exist');
-        }
+        bot.guilds.fetch(guildID).then((guildObj) => {
+          let role = guildObj.roles.cache.find( r => r.name === timeout.role );
+          if (role) {
+            let guildMember = guildObj.member(timeout.user);
+            guildMember.roles.remove(role).then((gm) => {
+              guildMember.send(timeout.message);
+            }).catch((e) => {
+              console.log('failed to remove role during timeout', JSON.stringify(timeout), e);
+            });
+          } else {
+            console.log('timeout role', timeout.role, 'does not exist');
+          }
+        });
         return false; //return false so the filter will discard this timeout
       } else {
         //console.log('skipping timeout', JSON.stringify(timeout));
